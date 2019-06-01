@@ -54,6 +54,15 @@ async function callStatic(func, args) {
   return decodedGet;
 }
 
+//Create a asynchronous write call for our smart contract
+async function contractCall(func, args, value) {
+  const contract = await client.getContractInstance(contractSource, {contractAddress});
+  //Make a call to write smart contract func, with aeon value input
+  const calledSet = await contract.call(func, args, {amount: value}).catch(e => console.error(e));
+
+  return calledSet;
+}
+
 window.addEventListener('load', async () => {
   $("#loader").show();
 
@@ -84,23 +93,44 @@ for (let i = 1; i <= memesLength; i++) {
 
 });
 
+//If someone clicks to vote on a meme, get the input and execute the voteCall
 jQuery("#memeBody").on("click", ".voteBtn", async function(event){
-  const value = $(this).siblings('input').val();
-  const dataIndex = event.target.id;
-  const foundIndex = memeArray.findIndex(meme => meme.index == dataIndex);
+  $("#loader").show();
+  //Create two new let block scoped variables, value for the vote input and
+  //index to get the index of the meme on which the user wants to vote
+  let value = $(this).siblings('input').val(),
+      index = event.target.id;
+
+  //Promise to execute execute call for the vote meme function with let values
+  await contractCall('voteMeme', [index], value);
+
+  //Hide the loading animation after async calls return a value
+  const foundIndex = memeArray.findIndex(meme => meme.index == event.target.id);
+  //console.log(foundIndex);
   memeArray[foundIndex].votes += parseInt(value, 10);
+
   renderMemes();
+  $("#loader").hide();
 });
 
+//If someone clicks to register a meme, get the input and execute the registerCall
 $('#registerBtn').click(async function(){
-  var name = ($('#regName').val()),
-      url = ($('#regUrl').val());
+  $("#loader").show();
+  //Create two new let variables which get the values from the input fields
+  const name = ($('#regName').val()),
+        url = ($('#regUrl').val());
 
+  //Make the contract call to register the meme with the newly passed values
+  await contractCall('registerMeme', [url, name], 0);
+
+  //Add the new created memeobject to our memearray
   memeArray.push({
     creatorName: name,
     memeUrl: url,
     index: memeArray.length+1,
-    votes: 0
+    votes: 0,
   })
+
   renderMemes();
+  $("#loader").hide();
 });
